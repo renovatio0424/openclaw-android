@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">오픈클로 컴패니언</string>
+    <string name="notification_channel_name">OpenClaw 연결 상태</string>
+    <string name="notification_connected">게이트웨이에 연결되었습니다.</string>
+    <string name="notification_connecting">게이트웨이에 연결 중...</string>
+    <string name="notification_error">게이트웨이 오류가 발생했습니다.</string>
+    <string name="notification_disconnected">게이트웨이 연결이 끊어졌습니다.</string>
+    <string name="notification_listener_label">OpenClaw 알림 리스너</string>
+    <string name="notification_listener_description">OpenClaw Companion이 알림을 읽고 전송할 수 있도록 허용합니다.</string>
+</resources>
