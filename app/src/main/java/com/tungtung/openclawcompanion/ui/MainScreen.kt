@@ -112,11 +112,8 @@ private fun ShortcutCards(
             subtitle = if (appCount > 0) "${appCount}개 앱 선택됨" else "앱을 선택하세요",
             onClick = onOpenAppPicker
         )
-        ShortcutCard(
-            icon = Icons.Default.Message,
-            title = "SMS 키워드 설정",
-            subtitle = if (smsKeywords.isNotEmpty()) smsKeywords.joinToString(", ")
-            else "키워드를 등록하세요",
+        SmsKeywordCard(
+            keywords = smsKeywords,
             onClick = onOpenSmsFilter
         )
     }
@@ -159,6 +156,70 @@ private fun ShortcutCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+            }
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SmsKeywordCard(
+    keywords: List<String>,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Message,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "SMS 키워드 설정",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                if (keywords.isEmpty()) {
+                    Text(
+                        text = "키워드를 등록하세요",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    FlowRow(
+                        modifier = Modifier.padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        keywords.forEach { keyword ->
+                            AssistChip(
+                                onClick = onClick,
+                                label = {
+                                    Text(
+                                        text = keyword,
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
             }
             Icon(
                 imageVector = Icons.Default.ChevronRight,
