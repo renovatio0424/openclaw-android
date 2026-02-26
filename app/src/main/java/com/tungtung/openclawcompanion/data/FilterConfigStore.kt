@@ -10,6 +10,8 @@ object FilterConfigStore {
     private const val PREFS_NAME = "openclaw_prefs"
     private const val KEY_FILTER = "filters"
     private const val KEY_GATEWAY = "gateway"
+    private const val KEY_SMS_HISTORY = "sms_history"
+    private const val MAX_SMS_HISTORY = 100
 
     private val prefs: SharedPreferences by lazy {
         OpenClawCompanionApp.context().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -38,5 +40,21 @@ object FilterConfigStore {
 
     fun saveGatewayPrefs(prefsValue: GatewayPrefs) {
         prefs.edit().putString(KEY_GATEWAY, json.encodeToString(prefsValue)).apply()
+    }
+
+    fun loadSmsHistory(): List<SmsHistoryEntry> {
+        val raw = prefs.getString(KEY_SMS_HISTORY, null) ?: return emptyList()
+        return runCatching { json.decodeFromString<List<SmsHistoryEntry>>(raw) }
+            .getOrElse { emptyList() }
+    }
+
+    fun addSmsHistory(entry: SmsHistoryEntry) {
+        val current = loadSmsHistory()
+        val updated = (listOf(entry) + current).take(MAX_SMS_HISTORY)
+        prefs.edit().putString(KEY_SMS_HISTORY, json.encodeToString(updated)).apply()
+    }
+
+    fun clearSmsHistory() {
+        prefs.edit().remove(KEY_SMS_HISTORY).apply()
     }
 }

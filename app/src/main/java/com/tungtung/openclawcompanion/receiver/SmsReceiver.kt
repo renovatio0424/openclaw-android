@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
 import com.tungtung.openclawcompanion.data.FilterConfigStore
+import com.tungtung.openclawcompanion.data.SmsHistoryEntry
 import com.tungtung.openclawcompanion.service.GatewayService
 
 class SmsReceiver : BroadcastReceiver() {
@@ -17,12 +18,22 @@ class SmsReceiver : BroadcastReceiver() {
         if (sender.isBlank() || body.isBlank()) return
 
         val config = FilterConfigStore.load()
-        val normalizedSender = sender.replace(" ", "")
-        val smsAllowed = config.smsWhitelistAll || config.smsWhitelist.any {
-            normalizedSender.contains(it.replace(" ", ""), ignoreCase = true)
-        }
-        if (!smsAllowed) return
+        if (config.smsIncludeKeywords.isEmpty()) return
+
+        val matchedKeyword = config.smsIncludeKeywords.firstOrNull {
+            body.contains(it, ignoreCase = true)
+        } ?: return
+
         if (config.blockedKeywords.any { body.contains(it, ignoreCase = true) }) return
+
+        FilterConfigStore.addSmsHistory(
+            SmsHistoryEntry(
+                timestamp = System.currentTimeMillis(),
+                sender = sender,
+                body = body,
+                matchedKeyword = matchedKeyword
+            )
+        )
 
         GatewayService.sendEvent(
             context,

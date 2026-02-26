@@ -17,10 +17,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -37,46 +37,39 @@ import com.tungtung.openclawcompanion.data.FilterConfig
 @Composable
 fun FilterScreen(
     initialConfig: FilterConfig,
+    appWhitelist: List<String>,
     onSave: (FilterConfig) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenAppPicker: () -> Unit,
+    onOpenSmsHistory: () -> Unit
 ) {
-    var appWhitelist by remember(initialConfig) { mutableStateOf(initialConfig.appWhitelist) }
-    var smsWhitelist by remember(initialConfig) { mutableStateOf(initialConfig.smsWhitelist) }
+    var smsIncludeKeywords by remember(initialConfig) { mutableStateOf(initialConfig.smsIncludeKeywords) }
     var blockedKeywords by remember(initialConfig) { mutableStateOf(initialConfig.blockedKeywords) }
-    var smsWhitelistAll by remember(initialConfig) { mutableStateOf(initialConfig.smsWhitelistAll) }
 
-    var appInput by remember { mutableStateOf("") }
-    var smsInput by remember { mutableStateOf("") }
-    var keywordInput by remember { mutableStateOf("") }
+    var smsKeywordInput by remember { mutableStateOf("") }
+    var blockedInput by remember { mutableStateOf("") }
+
+    fun currentConfig() = FilterConfig(
+        appWhitelist = appWhitelist,
+        smsIncludeKeywords = smsIncludeKeywords,
+        blockedKeywords = blockedKeywords
+    )
+
+    fun saveNow() { onSave(currentConfig()) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(text = "필터 설정") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = {
+                        saveNow()
+                        onBack()
+                    }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = null)
                     }
                 }
             )
-        },
-        bottomBar = {
-            Button(
-                onClick = {
-                    val config = FilterConfig(
-                        appWhitelist = appWhitelist,
-                        smsWhitelist = smsWhitelist,
-                        smsWhitelistAll = smsWhitelistAll,
-                        blockedKeywords = blockedKeywords
-                    )
-                    onSave(config)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(text = "저장")
-            }
         }
     ) { innerPadding ->
         Column(
@@ -87,62 +80,77 @@ fun FilterScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Section(title = "앱 알림 허용 목록") {
-                ChipGroup(values = appWhitelist, onRemove = { value ->
-                    appWhitelist = appWhitelist.minus(value)
-                })
-                LinedTextField(
-                    value = appInput,
-                    label = "패키지 이름 추가",
-                    onValueChange = { appInput = it },
-                    onAdd = {
-                        val trimmed = appInput.trim()
-                        if (trimmed.isNotEmpty() && trimmed !in appWhitelist) {
-                            appWhitelist = listOf(trimmed) + appWhitelist
-                            appInput = ""
-                        }
-                    }
+            Section(title = "앱 알림 허용") {
+                Text(
+                    text = "${appWhitelist.size}개 앱 선택됨",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                OutlinedButton(
+                    onClick = {
+                        saveNow()
+                        onOpenAppPicker()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("앱 선택하기")
+                }
             }
 
-            Section(title = "SMS 필터") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(text = "모든 번호 허용")
-                    Switch(checked = smsWhitelistAll, onCheckedChange = { smsWhitelistAll = it })
-                }
-                ChipGroup(values = smsWhitelist, onRemove = { value ->
-                    smsWhitelist = smsWhitelist.minus(value)
+            Section(title = "SMS 포함 키워드") {
+                Text(
+                    text = "아래 키워드가 포함된 SMS만 전달됩니다",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                ChipGroup(values = smsIncludeKeywords, onRemove = { value ->
+                    smsIncludeKeywords = smsIncludeKeywords.minus(value)
+                    saveNow()
                 })
                 LinedTextField(
-                    value = smsInput,
-                    label = "번호 추가",
-                    onValueChange = { smsInput = it },
+                    value = smsKeywordInput,
+                    label = "키워드 추가 (예: 인증, 배송, 결제)",
+                    onValueChange = { smsKeywordInput = it },
                     onAdd = {
-                        val trimmed = smsInput.trim()
-                        if (trimmed.isNotEmpty() && trimmed !in smsWhitelist) {
-                            smsWhitelist = listOf(trimmed) + smsWhitelist
-                            smsInput = ""
+                        val trimmed = smsKeywordInput.trim()
+                        if (trimmed.isNotEmpty() && trimmed !in smsIncludeKeywords) {
+                            smsIncludeKeywords = listOf(trimmed) + smsIncludeKeywords
+                            smsKeywordInput = ""
+                            saveNow()
                         }
                     }
                 )
+                OutlinedButton(
+                    onClick = {
+                        saveNow()
+                        onOpenSmsHistory()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("매칭 기록 보기")
+                }
             }
 
             Section(title = "차단 키워드") {
+                Text(
+                    text = "알림/SMS에 아래 키워드가 포함되면 차단됩니다",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 ChipGroup(values = blockedKeywords, onRemove = { value ->
                     blockedKeywords = blockedKeywords.minus(value)
+                    saveNow()
                 })
                 LinedTextField(
-                    value = keywordInput,
+                    value = blockedInput,
                     label = "키워드 추가",
-                    onValueChange = { keywordInput = it },
+                    onValueChange = { blockedInput = it },
                     onAdd = {
-                        val trimmed = keywordInput.trim()
+                        val trimmed = blockedInput.trim()
                         if (trimmed.isNotEmpty() && trimmed !in blockedKeywords) {
                             blockedKeywords = listOf(trimmed) + blockedKeywords
-                            keywordInput = ""
+                            blockedInput = ""
+                            saveNow()
                         }
                     }
                 )

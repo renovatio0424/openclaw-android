@@ -42,9 +42,11 @@ import com.tungtung.openclawcompanion.service.GatewayService.Companion.EXTRA_EVE
 import com.tungtung.openclawcompanion.service.GatewayService.Companion.EXTRA_EVENT_TIMESTAMP
 import com.tungtung.openclawcompanion.service.GatewayService.Companion.EXTRA_EVENT_TYPE
 import com.tungtung.openclawcompanion.service.NotificationListener
+import com.tungtung.openclawcompanion.ui.AppPickerScreen
 import com.tungtung.openclawcompanion.ui.FilterScreen
 import com.tungtung.openclawcompanion.ui.MainScreen
 import com.tungtung.openclawcompanion.ui.SettingsScreen
+import com.tungtung.openclawcompanion.ui.SmsHistoryScreen
 import com.tungtung.openclawcompanion.ui.theme.OpenClawCompanionTheme
 import com.tungtung.openclawcompanion.viewmodel.MainViewModel
 
@@ -52,6 +54,8 @@ class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    private val smsPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { }
 
     private val eventReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -71,7 +75,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestNotificationPermissionIfNeeded()
-        registerReceiver(eventReceiver, IntentFilter(ACTION_EVENT_BROADCAST))
+        requestSmsPermissionIfNeeded()
+        registerReceiver(eventReceiver, IntentFilter(ACTION_EVENT_BROADCAST), Context.RECEIVER_NOT_EXPORTED)
         setContent {
             OpenClawCompanionRoot(viewModel)
         }
@@ -86,6 +91,16 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
         notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    private fun requestSmsPermissionIfNeeded() {
+        val perms = arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS)
+        val needed = perms.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }.toTypedArray()
+        if (needed.isNotEmpty()) {
+            smsPermissionLauncher.launch(needed)
+        }
     }
 }
 
@@ -131,11 +146,30 @@ private fun OpenClawCompanionRoot(viewModel: MainViewModel) {
             composable("filter") {
                 FilterScreen(
                     initialConfig = filterConfig,
+                    appWhitelist = filterConfig.appWhitelist,
                     onSave = { config ->
                         FilterConfigStore.save(config)
                         filterConfig = config
-                        navController.popBackStack()
                     },
+                    onBack = { navController.popBackStack() },
+                    onOpenAppPicker = { navController.navigate("appPicker") },
+                    onOpenSmsHistory = { navController.navigate("smsHistory") }
+                )
+            }
+            composable("appPicker") {
+                AppPickerScreen(
+                    selectedPackages = filterConfig.appWhitelist,
+                    onSelectionChanged = { selected ->
+                        filterConfig = filterConfig.copy(appWhitelist = selected)
+                        FilterConfigStore.save(filterConfig)
+                    },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable("smsHistory") {
+                SmsHistoryScreen(
+                    keywords = filterConfig.smsIncludeKeywords,
+                    blockedKeywords = filterConfig.blockedKeywords,
                     onBack = { navController.popBackStack() }
                 )
             }
