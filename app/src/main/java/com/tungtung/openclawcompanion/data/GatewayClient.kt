@@ -126,10 +126,10 @@ object GatewayClient {
                 put("minProtocol", JsonPrimitive(3))
                 put("maxProtocol", JsonPrimitive(3))
                 put("client", buildJsonObject {
-                    put("id", JsonPrimitive("openclaw-android"))
+                    put("id", JsonPrimitive("cli"))
                     put("version", JsonPrimitive("1.0.0"))
                     put("platform", JsonPrimitive("android"))
-                    put("mode", JsonPrimitive("ui"))
+                    put("mode", JsonPrimitive("operator"))
                 })
                 put("role", JsonPrimitive("operator"))
                 put("scopes", buildJsonArray {
