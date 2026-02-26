@@ -11,6 +11,7 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import android.util.Log
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -19,6 +20,8 @@ import okhttp3.WebSocketListener
 import okio.ByteString
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+
+private const val TAG = "GatewayClient"
 
 object GatewayClient {
     private val client = OkHttpClient.Builder()
@@ -35,7 +38,9 @@ object GatewayClient {
 
     @Synchronized
     fun connect(url: String, token: String) {
+        Log.d(TAG, "connect() url=$url token=${token.take(8)}...")
         if (url.isBlank() || token.isBlank()) {
+            Log.e(TAG, "connect() failed: url or token is blank")
             _state.value = ConnectionState.ERROR
             return
         }
@@ -68,9 +73,8 @@ object GatewayClient {
 
     private fun createListener(token: String) = object : WebSocketListener() {
 
-        // onOpen: 아무것도 보내지 않음 — 게이트웨이가 먼저 challenge를 보낼 때까지 대기
         override fun onOpen(webSocket: WebSocket, response: Response) {
-            // 게이트웨이가 connect.challenge 이벤트를 먼저 보냄
+            Log.i(TAG, "onOpen: WebSocket connected, waiting for challenge")
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
@@ -80,21 +84,22 @@ object GatewayClient {
                 val event = obj["event"]?.jsonPrimitive?.content
                 val ok = obj["ok"]?.jsonPrimitive?.content
 
+                Log.d(TAG, "onMessage: type=$type event=$event ok=$ok")
                 when {
-                    // 1) 게이트웨이 → 클라이언트: challenge 수신 → connect 전송
                     type == "event" && event == "connect.challenge" -> {
+                        Log.i(TAG, "Received challenge, sending handshake")
                         webSocket.send(buildHandshake(token))
                     }
-                    // 2) 게이트웨이 → 클라이언트: hello-ok (connect 성공)
                     type == "res" && ok == "true" -> {
+                        Log.i(TAG, "Connected successfully!")
                         _state.value = ConnectionState.CONNECTED
                     }
-                    // 3) 인증 실패
                     type == "res" && ok == "false" -> {
+                        Log.e(TAG, "Auth failed: $text")
                         _state.value = ConnectionState.ERROR
                         webSocket.close(1000, "auth failed")
                     }
-                    else -> { /* 기타 메시지 무시 */ }
+                    else -> { Log.d(TAG, "Unhandled message: $text") }
                 }
             }
         }
@@ -102,10 +107,12 @@ object GatewayClient {
         override fun onMessage(webSocket: WebSocket, bytes: ByteString) { /* 무시 */ }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+            Log.e(TAG, "onFailure: ${t.message}", t)
             _state.value = ConnectionState.ERROR
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            Log.i(TAG, "onClosed: code=$code reason=$reason")
             _state.value = ConnectionState.DISCONNECTED
         }
     }
@@ -119,10 +126,10 @@ object GatewayClient {
                 put("minProtocol", JsonPrimitive(3))
                 put("maxProtocol", JsonPrimitive(3))
                 put("client", buildJsonObject {
-                    put("id", JsonPrimitive("android-companion"))
+                    put("id", JsonPrimitive("openclaw-android"))
                     put("version", JsonPrimitive("1.0.0"))
                     put("platform", JsonPrimitive("android"))
-                    put("mode", JsonPrimitive("operator"))
+                    put("mode", JsonPrimitive("ui"))
                 })
                 put("role", JsonPrimitive("operator"))
                 put("scopes", buildJsonArray {
