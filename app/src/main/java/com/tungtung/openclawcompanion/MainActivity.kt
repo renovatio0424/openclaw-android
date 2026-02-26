@@ -132,6 +132,8 @@ private fun OpenClawCompanionRoot(viewModel: MainViewModel) {
                 MainScreen(
                     events = events,
                     state = connectionState,
+                    appCount = filterConfig.appWhitelist.size,
+                    smsKeywords = filterConfig.smsIncludeKeywords,
                     onToggleService = {
                         if (connectionState == ConnectionState.CONNECTED || connectionState == ConnectionState.CONNECTING) {
                             GatewayService.stop(context)
@@ -139,7 +141,8 @@ private fun OpenClawCompanionRoot(viewModel: MainViewModel) {
                             GatewayService.start(context)
                         }
                     },
-                    onOpenFilters = { navController.navigate("filter") },
+                    onOpenAppPicker = { navController.navigate("appPicker") },
+                    onOpenSmsFilter = { navController.navigate("filter") },
                     onOpenSettings = { navController.navigate("settings") }
                 )
             }
